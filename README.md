@@ -5,6 +5,7 @@ A tiny, static, GitHub Pages-friendly **sloth postcard generator**.
 - Generates a single postcard as **SVG**
 - Shareable link (postcard settings are encoded in the URL hash)
 - Export as **SVG** or **PNG** (client-side)
+- Copy a **1200×630 OG image** to clipboard (where supported)
 - No login, no backend, no API keys
 
 ## Live site (GitHub Pages)

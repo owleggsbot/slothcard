@@ -277,27 +277,64 @@ function download(filename, text, mime){
   setTimeout(()=> URL.revokeObjectURL(url), 2000);
 }
 
-async function svgToPng(svgText){
+async function svgToPng(svgText, opts = {}){
+  const {
+    width = 2000,
+    height = 1200,
+    background = "#000",
+    // how to fit the SVG into the output canvas
+    fit = "cover", // "cover" | "contain" | "stretch"
+    srcWidth = 1000,
+    srcHeight = 600,
+  } = opts;
+
   const svgBlob = new Blob([svgText], {type: "image/svg+xml"});
   const url = URL.createObjectURL(svgBlob);
   try{
     const img = new Image();
     img.decoding = "async";
     await new Promise((res, rej)=>{ img.onload=res; img.onerror=rej; img.src=url; });
+
     const canvas = document.createElement("canvas");
-    canvas.width = 2000;
-    canvas.height = 1200;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext("2d");
 
     // background fill for transparent SVG bits
-    ctx.fillStyle = "#000";
+    ctx.fillStyle = background;
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    if(fit === "stretch"){
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    }else{
+      const scaleX = width / srcWidth;
+      const scaleY = height / srcHeight;
+      const scale = (fit === "contain") ? Math.min(scaleX, scaleY) : Math.max(scaleX, scaleY);
+      const drawW = srcWidth * scale;
+      const drawH = srcHeight * scale;
+      const dx = (width - drawW) / 2;
+      const dy = (height - drawH) / 2;
+      ctx.drawImage(img, dx, dy, drawW, drawH);
+    }
+
     return await new Promise((res)=> canvas.toBlob(res, "image/png"));
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+async function ogPngBlob(){
+  // OG image is 1200x630 (1.91:1). Our SVG is 1000x600 (1.66:1), so we letterbox.
+  const svgText = slothSVG(state);
+  const P = PALETTES.find(p => p.id === state.pal) || PALETTES[0];
+  return await svgToPng(svgText, {
+    width: 1200,
+    height: 630,
+    background: P.bg,
+    fit: "contain",
+    srcWidth: 1000,
+    srcHeight: 600,
+  });
 }
 
 function blobDownload(filename, blob){
@@ -380,11 +417,36 @@ function init(){
       setStatus("Share link copied.");
     }
   });
+  const canCopyImage = !!(navigator.clipboard && window.ClipboardItem);
+  if(!canCopyImage){
+    // "Copy image" is only available in some browsers (notably Chromium-based).
+    $("btnCopyImg").style.display = "none";
+  }
+
   $("btnSvg").addEventListener("click", () => {
     const svgText = slothSVG(state);
     download("slothcard.svg", svgText, "image/svg+xml");
     setStatus("Downloaded SVG.");
   });
+
+  $("btnCopyImg").addEventListener("click", async () => {
+    if(!canCopyImage){
+      setStatus("Copy image isn’t supported in this browser.");
+      return;
+    }
+    try{
+      setStatus("Rendering image…");
+      const blob = await ogPngBlob();
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob })
+      ]);
+      setStatus("OG image copied.");
+    } catch (e){
+      console.error(e);
+      setStatus("Copy image failed. Try downloading PNG instead.");
+    }
+  });
+
   $("btnPng").addEventListener("click", async () => {
     try{
       setStatus("Rendering PNG…");
