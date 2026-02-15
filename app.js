@@ -29,6 +29,35 @@ const DEFAULTS = {
   seed: 1,
 };
 
+// Example presets: a small gallery to show off the generator + shareability.
+// (Each preset is just a normal state; clicking one loads it and updates the URL.)
+const EXAMPLES = [
+  {
+    label: "nap dept.",
+    state: { pal: "midnight", pose: "nap", msg: "A nap is a plan.", sig: "— nap dept.", seed: 38290111 }
+  },
+  {
+    label: "gentle persistence",
+    state: { pal: "moss", pose: "hang", msg: "Small steps. Soft heart. Strong snack.", sig: "— your slow pal", seed: 91827364 }
+  },
+  {
+    label: "tea time",
+    state: { pal: "paper", pose: "tea", msg: "If it can wait, it should.", sig: "— sincerely, canopy", seed: 14400221 }
+  },
+  {
+    label: "hello friend",
+    state: { pal: "seafoam", pose: "wave", msg: "You don’t have to sprint to arrive.", sig: "— a sloth", seed: 90011999 }
+  },
+  {
+    label: "leaf letter",
+    state: { pal: "terracotta", pose: "leaf", msg: "Today’s priority: gentle persistence.", sig: "— the canopy committee", seed: 77770007 }
+  },
+  {
+    label: "slow mail",
+    state: { pal: "midnight", pose: "hang", msg: "Progress counts even when it’s tiny.", sig: "— a sloth", seed: 50505050 }
+  },
+];
+
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
 function xorshift32(seed){
@@ -328,6 +357,34 @@ function syncUIFromState(){
   $("sig").value = state.sig;
 }
 
+function renderExamples(){
+  const mount = $("examples");
+  if(!mount) return;
+
+  mount.innerHTML = EXAMPLES.map((ex, idx) => {
+    const svg = slothSVG({ ...DEFAULTS, ...ex.state });
+    // Keep the full SVG but let CSS size it down.
+    return `
+      <button class="exampleBtn" type="button" data-example="${idx}" aria-label="Load example: ${escapeXml(ex.label)}">
+        <span class="exampleThumb" aria-hidden="true">${svg}</span>
+        <span class="exampleLabel">${escapeXml(ex.label)}</span>
+      </button>
+    `;
+  }).join("");
+
+  mount.querySelectorAll("[data-example]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.getAttribute("data-example"), 10);
+      const ex = EXAMPLES[idx];
+      if(!ex) return;
+      state = { ...DEFAULTS, ...ex.state };
+      syncUIFromState();
+      render();
+      setStatus("Loaded example card.");
+    });
+  });
+}
+
 function randomize(){
   const rnd = xorshift32(((Math.random()*1e9)|0) ^ Date.now());
   state = {
@@ -413,6 +470,7 @@ function init(){
   $("year").textContent = new Date().getFullYear();
 
   render();
+  renderExamples();
 }
 
 init();
