@@ -69,6 +69,15 @@
             <select id="bg"></select>
           </label>
         </div>
+        <div class="row">
+          <label class="checkbox">
+            <input id="safeMode" type="checkbox" />
+            Safe mode (keep message off the URL)
+          </label>
+        </div>
+        <p id="safeHint" class="hint" hidden>
+          Safe mode stores your message only in this browser (localStorage). The share link will <strong>not</strong> include your message.
+        </p>
         <p class="hint">Tip: edits update the link automatically. Share it and your friend gets the same card.</p>
       </div>
 
@@ -88,7 +97,11 @@
 
       <h2>Privacy</h2>
       <p>
-        Your message stays in the URL you share. If you want it private, don’t share the link.
+        By default, your message is encoded into the share link URL.
+      </p>
+      <p>
+        If you enable <strong>Safe mode</strong>, the message/signature are stored only in your browser (localStorage) and are <strong>not</strong> included in the URL.
+        This keeps private text out of links, but it also means the link won’t reproduce your message on another device.
       </p>
 
       <footer class="footer">
