@@ -27,6 +27,8 @@ const DEFAULTS = {
   msg: "Take it slow. You’re doing fine.",
   sig: "— a sloth",
   seed: 1,
+  safe: false,
+  sid: null,
 };
 
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
@@ -47,6 +49,40 @@ function setStatus(msg){
   if(!msg) return;
   clearTimeout(setStatus._t);
   setStatus._t = setTimeout(()=> statusEl.textContent = "", 2200);
+}
+
+function safeStorageKey(sid){
+  return `slothcard:safe:${sid}`;
+}
+
+function newSid(){
+  // short, URL-safe id for localStorage lookup
+  const bytes = new Uint8Array(9);
+  (crypto?.getRandomValues?.(bytes) || bytes.fill((Math.random()*256)|0));
+  return btoa(String.fromCharCode(...bytes)).replaceAll("+","-").replaceAll("/","_").replaceAll("=","");
+}
+
+function loadSafeText(sid){
+  try{
+    const raw = localStorage.getItem(safeStorageKey(sid));
+    if(!raw) return null;
+    const obj = JSON.parse(raw);
+    if(!obj || typeof obj !== "object") return null;
+    return {
+      msg: typeof obj.msg === "string" ? obj.msg : DEFAULTS.msg,
+      sig: typeof obj.sig === "string" ? obj.sig : DEFAULTS.sig,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveSafeText(sid, {msg, sig}){
+  try{
+    localStorage.setItem(safeStorageKey(sid), JSON.stringify({msg, sig, savedAt: Date.now()}));
+  } catch {
+    // ignore (private mode / storage full)
+  }
 }
 
 function encodeState(state){
@@ -71,8 +107,28 @@ function readHash(){
   catch{ return null; }
 }
 
+function stateForUrl(s){
+  if(s.safe){
+    return {
+      pal: s.pal,
+      pose: s.pose,
+      seed: s.seed,
+      safe: 1,
+      sid: s.sid || null,
+    };
+  }
+  // default: everything in URL
+  return {
+    pal: s.pal,
+    pose: s.pose,
+    msg: s.msg,
+    sig: s.sig,
+    seed: s.seed,
+  };
+}
+
 function writeHash(state){
-  const h = encodeState(state);
+  const h = encodeState(stateForUrl(state));
   // avoid scrolling
   history.replaceState(null, "", "#" + h);
 }
@@ -83,6 +139,8 @@ function currentStateFromUI(){
     pose: $("pose").value,
     msg: $("msg").value,
     sig: $("sig").value,
+    safe: !!$("safeMode")?.checked,
+    sid: state.sid || null,
     seed: clamp(parseInt($("seed")?.value || state.seed || 1, 10) || 1, 1, 1_000_000_000)
   };
 }
@@ -314,7 +372,11 @@ function blobDownload(filename, blob){
 let state = { ...DEFAULTS, seed: (Math.random()*1e9)|0 };
 
 function render(){
-  // keep hash in sync
+  // keep hash in sync (and keep private message out of the URL in safe mode)
+  if(state.safe){
+    if(!state.sid) state.sid = newSid();
+    saveSafeText(state.sid, { msg: state.msg, sig: state.sig });
+  }
   writeHash(state);
 
   const svgText = slothSVG(state);
@@ -326,10 +388,14 @@ function syncUIFromState(){
   $("pose").value = state.pose;
   $("msg").value = state.msg;
   $("sig").value = state.sig;
+  if($("safeMode")) $("safeMode").checked = !!state.safe;
+  if($("safeHint")) $("safeHint").hidden = !state.safe;
 }
 
 function randomize(){
   const rnd = xorshift32(((Math.random()*1e9)|0) ^ Date.now());
+  const keepSafe = !!state.safe;
+  const keepSid = state.sid || null;
   state = {
     pal: pick(PALETTES, rnd).id,
     pose: pick(POSES, rnd).id,
@@ -343,7 +409,9 @@ function randomize(){
       "You don’t have to sprint to arrive.",
     ], rnd),
     sig: pick(["— a sloth","— your slow pal","— the canopy committee","— sincerely, nap dept."], rnd),
-    seed: ((Math.random()*1e9)|0)
+    seed: ((Math.random()*1e9)|0),
+    safe: keepSafe,
+    sid: keepSafe ? (keepSid || newSid()) : null,
   };
   syncUIFromState();
   render();
@@ -360,26 +428,57 @@ function init(){
 
   const fromHash = readHash();
   if(fromHash){
-    state = { ...DEFAULTS, ...fromHash };
+    // Safe mode: message/signature are stored locally, not in the URL.
+    if(fromHash.safe && fromHash.sid){
+      const local = loadSafeText(fromHash.sid);
+      state = {
+        ...DEFAULTS,
+        ...fromHash,
+        safe: true,
+        sid: fromHash.sid,
+        msg: local?.msg ?? DEFAULTS.msg,
+        sig: local?.sig ?? DEFAULTS.sig,
+      };
+      if(!local){
+        setStatus("Safe mode: no local message found on this device.");
+      }
+    } else {
+      state = { ...DEFAULTS, ...fromHash, safe: false, sid: null };
+    }
   }
   syncUIFromState();
 
   $("btnRandom").addEventListener("click", () => { randomize(); setStatus("New slothcard generated."); });
   $("btnCopy").addEventListener("click", async () => {
+    const link = location.href;
     try{
-      await navigator.clipboard.writeText(location.href);
-      setStatus("Share link copied.");
+      await navigator.clipboard.writeText(link);
     } catch {
       // fallback
       const ta = document.createElement("textarea");
-      ta.value = location.href;
+      ta.value = link;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand("copy");
       ta.remove();
-      setStatus("Share link copied.");
     }
+    setStatus(state.safe ? "Link copied (safe mode: message not included)." : "Share link copied.");
   });
+  $("safeMode")?.addEventListener("change", () => {
+    const enabled = !!$("safeMode").checked;
+    if(enabled){
+      // ensure we have a stable key for localStorage
+      state = { ...state, safe: true, sid: state.sid || newSid() };
+      saveSafeText(state.sid, { msg: state.msg, sig: state.sig });
+      setStatus("Safe mode enabled. Message stored on this device.");
+    } else {
+      state = { ...state, safe: false, sid: null };
+      setStatus("Safe mode disabled. Message will be included in the link.");
+    }
+    syncUIFromState();
+    render();
+  });
+
   $("btnSvg").addEventListener("click", () => {
     const svgText = slothSVG(state);
     download("slothcard.svg", svgText, "image/svg+xml");
