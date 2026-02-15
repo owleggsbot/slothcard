@@ -19,11 +19,24 @@ const POSES = [
   { id: "tea", name: "Tea" },
   { id: "wave", name: "Wave" },
   { id: "leaf", name: "Leaf" },
+  { id: "stretch", name: "Stretch" },
+  { id: "mail", name: "Snail mail" },
+  { id: "hug", name: "Hug" },
+  { id: "dance", name: "Tiny dance" },
+];
+
+const BACKGROUNDS = [
+  { id: "dots", name: "Dots" },
+  { id: "stripes", name: "Stripes" },
+  { id: "leafy", name: "Leafy" },
+  { id: "waves", name: "Waves" },
+  { id: "stars", name: "Stars" },
 ];
 
 const DEFAULTS = {
   pal: "moss",
   pose: "hang",
+  bg: "dots",
   msg: "Take it slow. You’re doing fine.",
   sig: "— a sloth",
   seed: 1,
@@ -81,6 +94,7 @@ function currentStateFromUI(){
   return {
     pal: $("pal").value,
     pose: $("pose").value,
+    bg: $("bg").value,
     msg: $("msg").value,
     sig: $("sig").value,
     seed: clamp(parseInt($("seed")?.value || state.seed || 1, 10) || 1, 1, 1_000_000_000)
@@ -109,21 +123,83 @@ function wrapText(text, maxChars){
   return lines.slice(0, 3);
 }
 
-function slothSVG({ pal, pose, msg, sig, seed }){
-  const P = PALETTES.find(p => p.id === pal) || PALETTES[0];
-  const rnd = xorshift32(seed | 0);
+function backgroundPattern(bgId, P, rnd){
+  const id = bgId || "dots";
 
-  const bgPattern = (() => {
-    const dots = [];
-    for(let i=0;i<40;i++){
+  if(id === "stripes"){
+    const lines = [];
+    for(let i=-20;i<28;i++){
+      const x = i*60;
+      const w = 22;
+      const o = 0.035 + rnd()*0.03;
+      lines.push(`<rect x="${x}" y="-200" width="${w}" height="1000" fill="${P.ink}" opacity="${o.toFixed(3)}" transform="rotate(18 0 0)"/>`);
+    }
+    return lines.join("");
+  }
+
+  if(id === "leafy"){
+    const leaves = [];
+    for(let i=0;i<28;i++){
+      const x = Math.floor(rnd()*1000);
+      const y = Math.floor(rnd()*600);
+      const s = 18 + Math.floor(rnd()*28);
+      const rot = (rnd()*360).toFixed(1);
+      const o = 0.06 + rnd()*0.10;
+      const fill = rnd() < 0.5 ? P.accent : P.accent2;
+      leaves.push(`
+        <g transform="translate(${x},${y}) rotate(${rot})" opacity="${o.toFixed(3)}">
+          <path d="M 0 0 C ${-0.8*s} ${-1.2*s}, ${-1.2*s} ${0.3*s}, 0 ${1.2*s} C ${1.2*s} ${0.3*s}, ${0.8*s} ${-1.2*s}, 0 0 Z" fill="${fill}"/>
+          <path d="M 0 ${-1.0*s} L 0 ${1.0*s}" stroke="${P.ink}" stroke-width="2" opacity="0.35" stroke-linecap="round"/>
+        </g>`);
+    }
+    return leaves.join("");
+  }
+
+  if(id === "waves"){
+    const waves = [];
+    for(let row=0; row<7; row++){
+      const y = 40 + row*85;
+      const amp = 14 + rnd()*10;
+      const o = 0.035 + rnd()*0.04;
+      const d = `M -40 ${y} C 120 ${y-amp}, 260 ${y+amp}, 420 ${y} S 720 ${y-amp}, 980 ${y} S 1240 ${y+amp}, 1520 ${y}`;
+      waves.push(`<path d="${d}" fill="none" stroke="${P.ink}" stroke-width="4" opacity="${o.toFixed(3)}" stroke-linecap="round"/>`);
+    }
+    return waves.join("");
+  }
+
+  if(id === "stars"){
+    const stars = [];
+    for(let i=0;i<34;i++){
       const x = Math.floor(rnd()*1000);
       const y = Math.floor(rnd()*600);
       const r = 1 + Math.floor(rnd()*3);
-      const a = 0.06 + rnd()*0.10;
-      dots.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${P.ink}" opacity="${a.toFixed(3)}"/>`);
+      const a = 0.05 + rnd()*0.12;
+      stars.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${P.ink}" opacity="${a.toFixed(3)}"/>`);
+      if(rnd() < 0.25){
+        stars.push(`<path d="M ${x-r*5} ${y} H ${x+r*5}" stroke="${P.ink}" stroke-width="2" opacity="${(a*0.7).toFixed(3)}" stroke-linecap="round"/>`);
+        stars.push(`<path d="M ${x} ${y-r*5} V ${y+r*5}" stroke="${P.ink}" stroke-width="2" opacity="${(a*0.7).toFixed(3)}" stroke-linecap="round"/>`);
+      }
     }
-    return dots.join("");
-  })();
+    return stars.join("");
+  }
+
+  // dots (default)
+  const dots = [];
+  for(let i=0;i<40;i++){
+    const x = Math.floor(rnd()*1000);
+    const y = Math.floor(rnd()*600);
+    const r = 1 + Math.floor(rnd()*3);
+    const a = 0.06 + rnd()*0.10;
+    dots.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${P.ink}" opacity="${a.toFixed(3)}"/>`);
+  }
+  return dots.join("");
+}
+
+function slothSVG({ pal, pose, bg, msg, sig, seed }){
+  const P = PALETTES.find(p => p.id === pal) || PALETTES[0];
+  const rnd = xorshift32(seed | 0);
+
+  const bgPattern = backgroundPattern(bg, P, rnd);
 
   const poseArt = (pose) => {
     const body = `
@@ -181,6 +257,51 @@ function slothSVG({ pal, pose, msg, sig, seed }){
           <path d="M -10 -70 C 20 -110 50 -120 80 -100" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="14" stroke-linecap="round"/>
           <path d="M 72 -96 q 30 14 38 40" fill="none" stroke="${P.accent}" stroke-width="6" stroke-linecap="round" opacity="0.55"/>
           <path d="M 88 -92 q 28 18 28 44" fill="none" stroke="${P.accent2}" stroke-width="6" stroke-linecap="round" opacity="0.45"/>
+        </g>
+      `;
+    }
+    if(pose === "stretch"){
+      return `
+        <g transform="translate(260,200)">
+          <g transform="translate(55,10)">${body}</g>
+          <path d="M -20 -72 C -8 -122 26 -132 52 -116" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="14" stroke-linecap="round"/>
+          <path d="M 14 -78 C 30 -130 70 -128 92 -106" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="14" stroke-linecap="round"/>
+          <path d="M -30 -126 q 36 -18 74 10" fill="none" stroke="${P.accent}" stroke-width="6" stroke-linecap="round" opacity="0.55"/>
+          <path d="M 6 -140 q 44 -16 86 18" fill="none" stroke="${P.accent2}" stroke-width="6" stroke-linecap="round" opacity="0.45"/>
+        </g>
+      `;
+    }
+    if(pose === "mail"){
+      return `
+        <g transform="translate(255,200)">
+          <g transform="translate(55,10)">${body}</g>
+          <g transform="translate(-70,30)">
+            <rect x="0" y="0" width="150" height="110" rx="14" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.14)"/>
+            <path d="M 10 18 L 75 62 L 140 18" fill="none" stroke="${P.accent2}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.65"/>
+            <path d="M 10 92 L 58 52" fill="none" stroke="${P.accent}" stroke-width="5" stroke-linecap="round" opacity="0.55"/>
+            <path d="M 140 92 L 92 52" fill="none" stroke="${P.accent}" stroke-width="5" stroke-linecap="round" opacity="0.55"/>
+          </g>
+        </g>
+      `;
+    }
+    if(pose === "hug"){
+      return `
+        <g transform="translate(260,205)">
+          <g transform="translate(55,0)">${body}</g>
+          <path d="M -30 0 C -72 22 -76 58 -40 74" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="14" stroke-linecap="round"/>
+          <path d="M 38 0 C 78 22 82 58 44 74" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="14" stroke-linecap="round"/>
+          <path d="M -56 54 q 56 30 110 0" fill="none" stroke="${P.accent}" stroke-width="6" stroke-linecap="round" opacity="0.45"/>
+        </g>
+      `;
+    }
+    if(pose === "dance"){
+      return `
+        <g transform="translate(250,205)">
+          <g transform="translate(55,0) rotate(-6)">${body}</g>
+          <path d="M -34 -34 C -84 -6 -90 28 -62 48" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="14" stroke-linecap="round"/>
+          <path d="M 42 -46 C 86 -68 108 -44 98 -12" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="14" stroke-linecap="round"/>
+          <path d="M -96 -72 q 26 16 42 46" fill="none" stroke="${P.accent2}" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+          <path d="M 112 -86 q -10 30 -42 52" fill="none" stroke="${P.accent}" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
         </g>
       `;
     }
@@ -324,6 +445,7 @@ function render(){
 function syncUIFromState(){
   $("pal").value = state.pal;
   $("pose").value = state.pose;
+  $("bg").value = state.bg;
   $("msg").value = state.msg;
   $("sig").value = state.sig;
 }
@@ -333,6 +455,7 @@ function randomize(){
   state = {
     pal: pick(PALETTES, rnd).id,
     pose: pick(POSES, rnd).id,
+    bg: pick(BACKGROUNDS, rnd).id,
     msg: pick([
       "Take it slow. You’re doing fine.",
       "If it can wait, it should.",
@@ -357,6 +480,7 @@ function setupSelect(id, items){
 function init(){
   setupSelect("pal", PALETTES);
   setupSelect("pose", POSES);
+  setupSelect("bg", BACKGROUNDS);
 
   const fromHash = readHash();
   if(fromHash){
@@ -399,7 +523,7 @@ function init(){
   });
 
   // live updates
-  for(const id of ["msg","sig","pal","pose"]){
+  for(const id of ["msg","sig","pal","pose","bg"]){
     $(id).addEventListener("input", () => {
       state = { ...state, ...currentStateFromUI() };
       render();

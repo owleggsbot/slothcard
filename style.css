@@ -107,7 +107,7 @@ input,select{
   outline:none;
 }
 input:focus,select:focus{border-color: rgba(158,226,179,.6)}
-.row{display:grid; grid-template-columns: 1fr 1fr; gap:10px}
+.row{display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:10px}
 .hint{color:var(--muted); font-size:12px; margin:6px 0 0}
 .status{margin:10px 0 0; color:var(--muted); font-size:13px; min-height:18px}
 
