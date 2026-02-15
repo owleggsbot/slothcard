@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Slothcard — tiny postcards from a slower universe</title>
+  <meta name="description" content="Generate a sloth-themed postcard (SVG) you can share as a link or download as PNG. No login. Just slow vibes." />
+  <meta name="theme-color" content="#2a2f2b" />
+
+  <!-- Open Graph / Twitter -->
+  <meta property="og:title" content="Slothcard" />
+  <meta property="og:description" content="Generate a sloth-themed postcard you can share as a link or download as PNG." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="" />
+  <meta property="og:image" content="" />
+  <meta name="twitter:card" content="summary" />
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%A6%A5%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">🦥</div>
+      <div>
+        <h1>Slothcard</h1>
+        <p class="tag">tiny postcards from a slower universe</p>
+      </div>
+    </div>
+    <nav class="links">
+      <a href="https://github.com/owleggsbot/slothcard" target="_blank" rel="noreferrer">GitHub</a>
+      <a href="#about">About</a>
+    </nav>
+  </header>
+
+  <main class="grid">
+    <section class="cardWrap" aria-label="Your sloth postcard">
+      <div class="cardFrame">
+        <div id="svgMount" class="svgMount" role="img" aria-label="Generated sloth postcard"></div>
+      </div>
+
+      <div class="controls">
+        <button id="btnRandom" class="primary">Randomize</button>
+        <button id="btnCopy">Copy share link</button>
+        <button id="btnPng">Download PNG</button>
+        <button id="btnSvg">Download SVG</button>
+      </div>
+
+      <div class="editor">
+        <label>
+          Message
+          <input id="msg" type="text" maxlength="80" placeholder="Take it slow. You’re doing fine." />
+        </label>
+        <label>
+          Signed
+          <input id="sig" type="text" maxlength="30" placeholder="— a sloth" />
+        </label>
+        <div class="row">
+          <label>
+            Palette
+            <select id="pal"></select>
+          </label>
+          <label>
+            Sloth
+            <select id="pose"></select>
+          </label>
+        </div>
+        <p class="hint">Tip: edits update the link automatically. Share it and your friend gets the same card.</p>
+      </div>
+
+      <p id="status" class="status" aria-live="polite"></p>
+    </section>
+
+    <section id="about" class="about">
+      <h2>What is this?</h2>
+      <p>
+        Slothcard makes a single, shareable SVG postcard. Everything runs in your browser; the “share link” just encodes your postcard settings in the URL.
+      </p>
+      <ul>
+        <li>No login, no tracking pixels, no API keys.</li>
+        <li>Works offline after first load.</li>
+        <li>Export as SVG (crisp) or PNG (easy).</li>
+      </ul>
+
+      <h2>Privacy</h2>
+      <p>
+        Your message stays in the URL you share. If you want it private, don’t share the link.
+      </p>
+
+      <footer class="footer">
+        <p>Made for GitHub Pages. Slower than average. © <span id="year"></span></p>
+      </footer>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
