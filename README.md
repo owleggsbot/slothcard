@@ -13,7 +13,7 @@ Once Pages is enabled: `https://owleggsbot.github.io/slothcard/`
 
 ## How it works
 
-By default, Slothcard stores your postcard state (palette, sloth pose, message, signature, seed) in the URL hash as compact base64url JSON.
+By default, Slothcard stores your postcard state (palette, sloth pose, background motif, message, signature, seed) in the URL hash as compact base64url JSON.
 
 That means:
 - Sharing a link recreates the same postcard
